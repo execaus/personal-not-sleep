@@ -1,0 +1,31 @@
+<?xml version="1.0" standalone="yes"?>
+<!-- sparkle-sign-warning:
+IMPORTANT: This file was signed by Sparkle. Any modifications to this file requires re-signing this file with generate_appcast or sign_update! The signed signature will be embedded at the end of this file.
+-->
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+    <channel>
+        <title>PersonalNotSleep</title>
+        <item>
+            <title>0.2.0</title>
+            <pubDate>Fri, 16 Oct 2026 09:41:01 +0300</pubDate>
+            <sparkle:version>2</sparkle:version>
+            <sparkle:shortVersionString>0.2.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Personal Not Sleep 0.2.0
+
+- Исправлено повторное открытие настроек: после закрытия окно и его SwiftUI-представление освобождаются, следующее открытие создаёт новое окно с сохранёнными настройками.
+- Добавлена нативная иконка приложения для Finder и системных представлений.
+- Добавлены проверка и установка подписанных обновлений через Sparkle. Ручная проверка доступна в строке меню; автоматическая проверка включается отдельно в настройках и выключена по умолчанию.
+- Обновления загружаются только из GitHub Releases проекта; лента и архив проверяются EdDSA-подписью до установки. Других сетевых функций нет.
+
+Версия 0.1.0 не содержала механизма обновления: переход на 0.2.0 может потребовать ручной загрузки и замены приложения. После установки 0.2.0 последующие выпуски смогут использовать Sparkle.
+]]></description>
+            <enclosure url="https://github.com/execaus/personal-not-sleep/releases/download/v0.2.0/PersonalNotSleep-0.2.0-macos-arm64.zip" length="2192392" type="application/octet-stream" sparkle:edSignature="JXVf8KGOM+qRXBB7Uzy4xwHW9AnmaAq/nNeyTrBdYdON5d7USmNWZ8NMWQdYK2PAP13BZn8K6QrztDPE6ohYDA=="/>
+        </item>
+    </channel>
+</rss>
+<!-- sparkle-signatures:
+edSignature: CQBTzi208lPuWQinK/8F0RQls0sOCoyEPZvsCoohwlq5sQ9oA/ZNbilT0tFyL3g8l5DUorfSlVeRNGWTJchNAQ==
+length: 2630
+-->

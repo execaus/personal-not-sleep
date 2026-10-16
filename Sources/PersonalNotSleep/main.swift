@@ -1,11 +1,15 @@
 import AppKit
 import PersonalNotSleepCore
+import Sparkle
 import SwiftUI
 
-@MainActor final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
+@MainActor final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelegate {
     private let model = AppModel()
     private var statusItem: NSStatusItem!
     private var settingsWindow: NSWindow?
+    private let updaterController = SPUStandardUpdaterController(startingUpdater: true,
+                                                                  updaterDelegate: nil,
+                                                                  userDriverDelegate: nil)
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -17,6 +21,9 @@ import SwiftUI
             DispatchQueue.main.async { self?.updateIcon() }
         }.store(in: &subscriptions)
         updateIcon()
+        if CommandLine.arguments.contains("--window-lifecycle-check") {
+            DispatchQueue.main.async { self.runWindowLifecycleCheck() }
+        }
     }
 
     private var subscriptions = Set<AnyCancellable>()
@@ -63,6 +70,10 @@ import SwiftUI
         let settings = NSMenuItem(title: "Расписание и настройки…", action: #selector(openSettings), keyEquivalent: "")
         settings.target = self
         menu.addItem(settings)
+        let update = NSMenuItem(title: "Проверить и установить обновление…",
+                                action: #selector(checkForUpdates), keyEquivalent: "")
+        update.target = self
+        menu.addItem(update)
         let quit = NSMenuItem(title: "Выход", action: #selector(quit), keyEquivalent: "q")
         quit.target = self
         menu.addItem(quit)
@@ -72,6 +83,7 @@ import SwiftUI
     @objc private func startPreset(_ sender: NSMenuItem) { model.startTimer(minutes: sender.tag); updateIcon() }
     @objc private func stop() { model.stop(); updateIcon() }
     @objc private func quit() { NSApp.terminate(nil) }
+    @objc private func checkForUpdates() { updaterController.checkForUpdates(nil) }
 
     @objc private func openSettings() {
         if settingsWindow == nil {
@@ -79,12 +91,42 @@ import SwiftUI
                                   styleMask: [.titled, .closable, .miniaturizable, .resizable],
                                   backing: .buffered, defer: false)
             window.title = "Personal Not Sleep"
-            window.contentView = NSHostingView(rootView: SettingsView(model: model))
+            // NSWindow releases itself on close by default, which conflicts with ARC ownership.
+            window.isReleasedWhenClosed = false
+            window.delegate = self
+            window.contentView = NSHostingView(rootView: SettingsView(model: model,
+                                                                      updater: updaterController.updater))
             window.center()
             settingsWindow = window
         }
         settingsWindow?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow, window === settingsWindow else { return }
+        window.contentView = nil
+        window.delegate = nil
+        settingsWindow = nil
+    }
+
+    private func runWindowLifecycleCheck() {
+        let savedRules = model.rules
+        openSettings()
+        guard let first = settingsWindow else { fatalError("Settings window did not open") }
+        let firstIdentity = ObjectIdentifier(first)
+        first.close()
+        guard settingsWindow == nil, first.contentView == nil else {
+            fatalError("Closed settings window or SwiftUI view was retained")
+        }
+        openSettings()
+        guard let second = settingsWindow,
+              ObjectIdentifier(second) != firstIdentity,
+              model.rules == savedRules else { fatalError("Settings window was not recreated") }
+        second.close()
+        guard settingsWindow == nil else { fatalError("Second settings window was retained") }
+        print("OK: settings window closes and reopens with preserved model")
+        NSApp.terminate(nil)
     }
 }
 
@@ -93,9 +135,17 @@ import Combine
 @MainActor
 private struct SettingsView: View {
     @ObservedObject var model: AppModel
+    private let updater: SPUUpdater
+    @State private var automaticChecks: Bool
     @State private var customMinutes = "45"
     private let days: [(Int, String)] = [(2, "Пн"), (3, "Вт"), (4, "Ср"), (5, "Чт"),
                                          (6, "Пт"), (7, "Сб"), (1, "Вс")]
+
+    init(model: AppModel, updater: SPUUpdater) {
+        self.model = model
+        self.updater = updater
+        _automaticChecks = State(initialValue: updater.automaticallyChecksForUpdates)
+    }
 
     var body: some View {
         Form {
@@ -163,6 +213,14 @@ private struct SettingsView: View {
             Section("Запуск") {
                 Toggle("Запускать при входе в macOS", isOn: $model.launchAtLogin)
                 Text("Для работы расписания после перезагрузки войдите в свою учётную запись.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Section("Обновления") {
+                Toggle("Автоматически проверять обновления", isOn: $automaticChecks)
+                    .onChange(of: automaticChecks) { _, enabled in
+                        updater.automaticallyChecksForUpdates = enabled
+                    }
+                Text("При включении приложение периодически обращается к GitHub. Установка обновления подтверждается отдельно. Ручная проверка доступна в строке меню.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Text("Утилита предотвращает только простойный сон Mac и дисплея. Блокировка экрана, закрытая крышка и системные политики действуют как обычно.")

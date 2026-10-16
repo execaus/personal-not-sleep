@@ -2,3 +2,6 @@
 dist/
 .DS_Store
 *.xcuserstate
+release/*.zip
+release/PersonalNotSleep-*.md
+release/old_updates/
