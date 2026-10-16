@@ -34,5 +34,5 @@ PYSIGNATURE
 )"
 .build/artifacts/sparkle/Sparkle/bin/sign_update --verify \
     --account personal-not-sleep "$archive" "$signature"
-shasum -a 256 "$archive" > release/SHA256SUMS
+(cd release && shasum -a 256 "PersonalNotSleep-${version}-macos-arm64.zip" > SHA256SUMS)
 print "Готово: $archive и подписанная release/appcast.xml"
